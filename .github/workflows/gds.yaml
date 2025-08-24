@@ -59,7 +59,6 @@ jobs:
         with:
           pdk: sky130
 
-      # Debug: Check what files were created
       - name: List files to debug
         run: |
           echo "Current directory contents:"
@@ -67,18 +66,17 @@ jobs:
           echo "Looking for viewer-related directories:"
           find . -name "*viewer*" -o -name "*html*" -o -name "*site*" 2>/dev/null || true
 
-      # Manual deployment without conflicts
       - name: Setup Pages
         uses: actions/configure-pages@v4
-      
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .  # Upload entire workspace, let's see what's there
-          name: my-unique-viewer-artifact
+          path: .
+          name: my-unique-viewer-artifact   # 👈 ensure unique artifact name
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          artifact_name: my-unique-viewer-artifact
+          artifact_name: my-unique-viewer-artifact   # 👈 deploy from unique artifact
