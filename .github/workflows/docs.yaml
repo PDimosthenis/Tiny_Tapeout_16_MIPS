@@ -1,8 +1,7 @@
 name: docs
 
 on:
-  # Temporarily disabled to prevent conflicts
-  # push:
+  push:
   workflow_dispatch:
 
 jobs:
