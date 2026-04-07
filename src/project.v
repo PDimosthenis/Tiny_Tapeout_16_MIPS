@@ -196,18 +196,13 @@ module data_mem(
     input wire MemRead,
     input wire [1:0] addr,
     input wire [15:0] writeData,
-    output reg [15:0] readData
+    output wire [15:0] readData
 );
 
     // 4 x 16-bit data memory.
     reg [15:0] memory [0:3];
 
-    always @(*) begin
-        if (MemRead)
-            readData = memory[addr];
-        else
-            readData = 16'b0;
-    end
+    assign readData = MemRead ? memory[addr] : 16'b0;
 
     always @(posedge clk) begin
         if (MemWrite)
