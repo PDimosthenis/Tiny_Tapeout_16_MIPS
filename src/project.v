@@ -60,12 +60,12 @@ endmodule
 // --- Instruction Memory ---
 module instruction_memory(
     input wire clk, write_enable,
-    input wire [3:0] p_in, write_addr,
+    input wire [2:0] p_in, write_addr,
     input wire byte_select,
     input wire [7:0] write_data_byte,
     output wire [15:0] instruction
 );
-    reg [15:0] ram [0:15];
+    reg [15:0] ram [0:7];
 
     always @(posedge clk) begin
         if (write_enable) begin
@@ -242,8 +242,8 @@ module mips_single_cycle(
     instruction_memory imem_u (
         .clk(clk),
         .write_enable(write_enable),
-        .p_in(pc_out),
-        .write_addr(write_addr),
+        .p_in(pc_out[2:0]),
+        .write_addr(write_addr[2:0]),
         .byte_select(write_byte_sel),
         .write_data_byte(write_data_byte),
         .instruction(instr)
