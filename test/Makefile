@@ -16,6 +16,7 @@ $(SIM): $(SRC) | $(SIM_BUILD)
 run: $(SIM)
 	@status=0; \
 	vvp $< || status=$$?; \
+	mkdir -p test; \
 	if [ $$status -eq 0 ]; then \
 		printf '%s\n' \
 			'<?xml version="1.0" encoding="UTF-8"?>' \
@@ -24,6 +25,7 @@ run: $(SIM)
 			'    <testcase classname="tb" name="tb_pass" time="0"/>' \
 			'  </testsuite>' \
 			'</testsuites>' > results.xml; \
+		cp results.xml test/results.xml; \
 	else \
 		printf '%s\n' \
 			'<?xml version="1.0" encoding="UTF-8"?>' \
@@ -34,8 +36,9 @@ run: $(SIM)
 			'    </testcase>' \
 			'  </testsuite>' \
 			'</testsuites>' > results.xml; \
+		cp results.xml test/results.xml; \
 		exit $$status; \
 	fi
 
 clean:
-	rm -rf $(SIM_BUILD) tb.vcd
+	rm -rf $(SIM_BUILD) tb.vcd results.xml test/results.xml
