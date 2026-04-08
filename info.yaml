@@ -1,7 +1,7 @@
 # Tiny Tapeout project information
 project:
   title:       "16-bit MIPS Single Cycle Processor"
-  author:      "Dimosthenis Papathanasiou , Andreas Skoufakis"                      # Your name
+  author:      "Dimosthenis Papathanasiou , Andreas Skoufakis , Christoforos Marinopoulos"                    
   #discord:     ""                      # Your Discord handle (optional)
   description: "A complete 16-bit MIPS single-cycle processor that loads 16-bit instructions through the existing 8-bit Tiny Tapeout input pins" 
   language:    "Verilog"                              # Language used

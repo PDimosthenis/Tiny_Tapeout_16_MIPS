@@ -1,26 +1,20 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# 16-bit MIPS Single Cycle Processor
+## Design Summary
 
-This project is a Tiny Tapeout 16-bit MIPS-like single-cycle CPU written in Verilog. It loads 16-bit instructions through the 8-bit `uio_in` input and exposes the ALU result on the Tiny Tapeout output pins.
-
-- [Project documentation](docs/info.md)
-
-## Overview
-
-The design implements a compact single-cycle datapath with a 4-entry register file, 4-word data memory, instruction memory, decoder, control unit, ALU, and 4-bit program counter. It is optimized for the Tiny Tapeout I/O constraints and runs at 10 MHz.
+This project implements a small 16-bit MIPS-like single-cycle CPU for Tiny Tapeout. The RTL in [src/project.v](src/project.v) uses a load/run interface on the Tiny Tapeout pins and exposes the ALU result on the output pins.
 
 ## How It Works
 
-The core is a single-cycle processor, so each instruction is fetched, decoded, executed, and written back in one clock cycle. The instruction memory stores 16-bit words, but the Tiny Tapeout input pins are only 8 bits wide, so instructions are loaded in two steps: low byte first, then high byte. The `ui_in[7]` pin selects load mode or run mode, and `ui_in[6]` selects which byte of the instruction word is being written.
+The top module, [tt_um_top_module_16_mips](src/project.v), uses `ui_in[7]` as the mode select bit. When `ui_in[7] = 0`, the design is in load mode and instruction bytes are written into instruction memory one halfword at a time. `ui_in[6]` selects the low byte or high byte, `ui_in[2:0]` selects the instruction address, and `uio_in[7:0]` carries the instruction byte.
 
-During run mode, the program counter selects the next instruction, the decoder extracts the register fields and immediate, the control unit generates the datapath signals, and the ALU either performs arithmetic/logic or calculates addresses for load and store operations. The lower 8 bits of the ALU result are shown on `uo_out`, and the low 4 bits of the program counter are shown on `uio_out`.
+When `ui_in[7] = 1`, the design enters run mode. The program counter advances on each clock edge, the decoder extracts the register fields and immediate values, the control unit generates the datapath control signals, and the ALU executes arithmetic, logic, and address calculations. In run mode, `uo_out[7:0]` shows the low byte of the ALU result and `uio_out[7:0]` shows the high byte, so the full result is `{uio_out, uo_out}`.
 
-The design uses only four architectural registers and two memory locations. That keeps the datapath small enough for Tiny Tapeout while still demonstrating a complete MIPS-style control flow with arithmetic, memory access, and jump behavior.
+The register file has four architectural registers addressed by 2-bit fields. The data memory in the RTL is 2 words deep, so the design is compact enough to fit Tiny Tapeout constraints while still demonstrating arithmetic, memory access, and jump control flow.
 
 ## Supported Instructions
 
-The processor supports eight opcodes:
+The processor supports these opcodes:
 
 | Opcode | Instruction | Behavior |
 |--------|-------------|----------|
@@ -57,54 +51,54 @@ Jump:
 
 ### Outputs
 
-- `uo_out[7:0]`: lower 8 bits of the ALU result in run mode, or `uio_in[7:0]` in load mode
+- `uo_out[7:0]`: lower 8 bits of the ALU result in run mode, or the load-mode echo of `uio_in[7:0]`
 - `uio_out[7:0]`: upper 8 bits of the ALU result in run mode
 - `uio_oe[7:0]`: `8'h00` in load mode, `8'hFF` in run mode
 
 ### Mode Behavior
 
 Load mode:
-1. Set `ui_in[7] = 0` for load mode
-2. Select an instruction address on `ui_in[2:0]`
-3. Write the low byte on `uio_in[7:0]` with `ui_in[6] = 0`
-4. Write the high byte on `uio_in[7:0]` with `ui_in[6] = 1`
-5. Set `ui_in[7] = 1` to enter run mode
+1. Set `ui_in[7] = 0`.
+2. Select an instruction address on `ui_in[2:0]`.
+3. Write the low byte on `uio_in[7:0]` with `ui_in[6] = 0`.
+4. Write the high byte on `uio_in[7:0]` with `ui_in[6] = 1`.
+5. Set `ui_in[7] = 1` to enter run mode.
 
 Run mode:
-1. The CPU fetches from instruction memory using the program counter
-2. The datapath executes one instruction per cycle
-3. `uo_out` and `uio_out` together show the full 16-bit ALU result (`{uio_out, uo_out}`)
+1. The CPU fetches from instruction memory using the program counter.
+2. The datapath executes one instruction per cycle.
+3. `uo_out` and `uio_out` together show the full 16-bit ALU result.
 
 ## External Hardware
 
-The design does not require external peripherals to run, but the Tiny Tapeout pins are used as the external interface:
+The design does not require external peripherals to run. The required external signals are:
 
-- `clk` is the system clock input and should be driven at 10 MHz for normal operation.
-- `rst_n` is an active-low reset input.
-- `ena` enables the tile.
-- `ui_in[7]` selects load mode or run mode.
-- `ui_in[6]` selects low-byte or high-byte writes during instruction loading.
-- `ui_in[2:0]` selects the instruction address during load mode.
-- `uio_in[7:0]` is the 8-bit instruction byte input during load mode.
-- `uo_out[7:0]` exposes ALU result bits `[7:0]` in run mode.
-- `uio_out[7:0]` exposes ALU result bits `[15:8]` in run mode.
+- `clk`: system clock input, intended for 10 MHz operation.
+- `rst_n`: active-low reset input.
+- `ena`: tile enable input.
+- `ui_in[7:0]`: Tiny Tapeout control pins for mode, byte select, and instruction address.
+- `uio_in[7:0]`: instruction byte input during load mode.
+- `uo_out[7:0]`: ALU result low byte.
+- `uio_out[7:0]`: ALU result high byte.
 
-If you are wiring this to test equipment or a board, the only required external signals are clock, reset, enable, and the Tiny Tapeout pin group. No extra RAM, ROM, or UART is needed because the design carries its own instruction memory and data memory internally.
+No extra RAM, ROM, or UART is needed because the design contains its own instruction memory and data memory internally.
 
 ## Files
 
-- [src/project.v](src/project.v) contains the full hardware design
-- [test/tb.v](test/tb.v) is the Verilog testbench used for simulation
-- [test/test.py](test/test.py) is the cocotb test file used by GitHub Actions and local verification
+- [src/project.v](src/project.v) contains the full hardware design.
+- [test/tb.v](test/tb.v) is the Verilog behavioral testbench used for simulation.
+- [test/test.py](test/test.py) is the cocotb test that mirrors the Verilog testbench.
 
 ## Testing
 
 Local simulation uses cocotb through the `test/Makefile` setup.
 
-The testbench performs two main checks:
+The testbench and cocotb test both:
 
-1. It exercises reset and basic signal behavior.
-2. It verifies the processor interface can be simulated cleanly through cocotb on GitHub Actions and locally.
+1. Load a short instruction program into instruction memory.
+2. Verify the load-mode memory contents.
+3. Switch into run mode.
+4. Check the PC, ALU result, and register state cycle by cycle.
 
 ```bash
 cd test
@@ -125,4 +119,4 @@ If you only want to run the testbench, use `make` from the `test/` directory. Gi
 
 ## Author
 
-Dimosthenis Papathanasiou, Andreas Skoufakis
+Dimosthenis Papathanasiou, Andreas Skoufakis , Christoforos Marinopoulos
