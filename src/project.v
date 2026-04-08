@@ -192,13 +192,13 @@ module data_mem(
     input wire clk,
     input wire MemWrite,
     input wire MemRead,
-    input wire [1:0] addr,
+    input wire  addr,
     input wire [15:0] writeData,
     output wire [15:0] readData
 );
 
     // 4 x 16-bit data memory.
-    reg [15:0] memory [0:3];
+    reg [15:0] memory [0:1];
 
     assign readData = MemRead ? memory[addr] : 16'b0;
 
@@ -329,11 +329,10 @@ module mips_single_cycle (
        .clk(clk), 
        .MemWrite(MemWrite & run_en), 
        .MemRead(MemRead), 
-       .addr(ALU_out[1:0]), 
+       .addr(ALU_out[0]), 
        .writeData(readData2), 
        .readData(MemData)
    );
 
 endmodule
-
 
