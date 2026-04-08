@@ -13,7 +13,7 @@ module tb;
   wire [7:0] uio_oe;
   
   // Instantiate the DUT
-  top_module_16_mips dut (
+  tt_um_top_module_16_mips dut (
     .clk(clk),
     .rst_n(rst_n),
     .ena(ena),
