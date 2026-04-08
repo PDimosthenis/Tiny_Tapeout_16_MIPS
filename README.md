@@ -2,7 +2,7 @@
 
 # 16-bit MIPS Single Cycle Processor
 
-This project is a Tiny Tapeout 16-bit MIPS-like single-cycle CPU written in Verilog. It loads 16-bit instructions through the 8-bit `ui_in` input and exposes the ALU result and program counter on the Tiny Tapeout I/O pins.
+This project is a Tiny Tapeout 16-bit MIPS-like single-cycle CPU written in Verilog. It loads 16-bit instructions through the 8-bit `uio_in` input and exposes the ALU result on the Tiny Tapeout output pins.
 
 - [Project documentation](docs/info.md)
 
@@ -12,11 +12,11 @@ The design implements a compact single-cycle datapath with a 4-entry register fi
 
 ## How It Works
 
-The core is a single-cycle processor, so each instruction is fetched, decoded, executed, and written back in one clock cycle. The instruction memory stores 16-bit words, but the Tiny Tapeout input pins are only 8 bits wide, so instructions are loaded in two steps: low byte first, then high byte. The `uio_in[7]` pin selects load mode or run mode, and `uio_in[6]` selects which byte of the instruction word is being written.
+The core is a single-cycle processor, so each instruction is fetched, decoded, executed, and written back in one clock cycle. The instruction memory stores 16-bit words, but the Tiny Tapeout input pins are only 8 bits wide, so instructions are loaded in two steps: low byte first, then high byte. The `ui_in[7]` pin selects load mode or run mode, and `ui_in[6]` selects which byte of the instruction word is being written.
 
 During run mode, the program counter selects the next instruction, the decoder extracts the register fields and immediate, the control unit generates the datapath signals, and the ALU either performs arithmetic/logic or calculates addresses for load and store operations. The lower 8 bits of the ALU result are shown on `uo_out`, and the low 4 bits of the program counter are shown on `uio_out`.
 
-The design uses only four architectural registers and four memory locations. That keeps the datapath small enough for Tiny Tapeout while still demonstrating a complete MIPS-style control flow with arithmetic, memory access, and jump behavior.
+The design uses only four architectural registers and two memory locations. That keeps the datapath small enough for Tiny Tapeout while still demonstrating a complete MIPS-style control flow with arithmetic, memory access, and jump behavior.
 
 ## Supported Instructions
 
@@ -38,40 +38,42 @@ The processor supports eight opcodes:
 Instructions are 16 bits wide.
 
 R-type:
-`[15:12] opcode | [11:8] rs | [7:4] rt | [3:0] rd`
+`[15:12] opcode | [11:10] rs | [9:8] rt | [7:6] rd | [5:0] unused`
 
 I-type:
-`[15:12] opcode | [11:8] rs | [7:4] rt | [3:0] imm`
+`[15:12] opcode | [11:10] rs | [9:8] rt | [7:0] imm`
 
 Jump:
-`[15:12] opcode | [11:4] unused | [3:0] target`
+`[15:12] opcode | [11:3] unused | [2:0] target`
 
 ## Tiny Tapeout Interface
 
 ### Inputs
 
-- `ui_in[7:0]`: instruction byte during load mode
-- `uio_in[7]`: mode select, `0` = load, `1` = run
-- `uio_in[6]`: byte select, `0` = low byte, `1` = high byte
-- `uio_in[3:0]`: instruction address during load mode
+- `ui_in[7]`: mode select, `0` = load, `1` = run
+- `ui_in[6]`: byte select, `0` = low byte, `1` = high byte
+- `ui_in[2:0]`: instruction address during load mode
+- `uio_in[7:0]`: instruction byte during load mode
 
 ### Outputs
 
-- `uo_out[7:0]`: lower 8 bits of the ALU result in run mode
-- `uio_out[3:0]`: program counter in run mode
+- `uo_out[7:0]`: lower 8 bits of the ALU result in run mode, or `uio_in[7:0]` in load mode
+- `uio_out[7:0]`: upper 8 bits of the ALU result in run mode
+- `uio_oe[7:0]`: `8'h00` in load mode, `8'hFF` in run mode
 
 ### Mode Behavior
 
 Load mode:
-1. Select an instruction address on `uio_in[3:0]`
-2. Write the low byte with `uio_in[6] = 0`
-3. Write the high byte with `uio_in[6] = 1`
-4. Set `uio_in[7] = 1` to enter run mode
+1. Set `ui_in[7] = 0` for load mode
+2. Select an instruction address on `ui_in[2:0]`
+3. Write the low byte on `uio_in[7:0]` with `ui_in[6] = 0`
+4. Write the high byte on `uio_in[7:0]` with `ui_in[6] = 1`
+5. Set `ui_in[7] = 1` to enter run mode
 
 Run mode:
 1. The CPU fetches from instruction memory using the program counter
 2. The datapath executes one instruction per cycle
-3. `uo_out` shows the ALU result and `uio_out[3:0]` shows the current PC
+3. `uo_out` and `uio_out` together show the full 16-bit ALU result (`{uio_out, uo_out}`)
 
 ## External Hardware
 
@@ -80,12 +82,12 @@ The design does not require external peripherals to run, but the Tiny Tapeout pi
 - `clk` is the system clock input and should be driven at 10 MHz for normal operation.
 - `rst_n` is an active-low reset input.
 - `ena` enables the tile.
-- `ui_in[7:0]` is the 8-bit instruction byte input during load mode.
-- `uio_in[7]` selects load mode or run mode.
-- `uio_in[6]` selects low-byte or high-byte writes during instruction loading.
-- `uio_in[3:0]` selects the instruction address during load mode.
-- `uo_out[7:0]` exposes the current ALU result.
-- `uio_out[3:0]` exposes the current program counter.
+- `ui_in[7]` selects load mode or run mode.
+- `ui_in[6]` selects low-byte or high-byte writes during instruction loading.
+- `ui_in[2:0]` selects the instruction address during load mode.
+- `uio_in[7:0]` is the 8-bit instruction byte input during load mode.
+- `uo_out[7:0]` exposes ALU result bits `[7:0]` in run mode.
+- `uio_out[7:0]` exposes ALU result bits `[15:8]` in run mode.
 
 If you are wiring this to test equipment or a board, the only required external signals are clock, reset, enable, and the Tiny Tapeout pin group. No extra RAM, ROM, or UART is needed because the design carries its own instruction memory and data memory internally.
 

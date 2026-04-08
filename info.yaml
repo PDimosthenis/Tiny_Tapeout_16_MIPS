@@ -19,13 +19,13 @@ project:
 
 # Pinout configuration
 pinout:
-  # Inputs (instruction byte on ui[7:0] during load mode)
-  ui[0]: "Instruction byte bit 0"
-  ui[1]: "Instruction byte bit 1"
-  ui[2]: "Instruction byte bit 2"
-  ui[3]: "Instruction byte bit 3"
-  ui[4]: "Instruction byte bit 4"
-  ui[5]: "Instruction byte bit 5"
+  # Inputs (mode/address control on ui)
+  ui[0]: "Instruction address bit 0 during load mode"
+  ui[1]: "Instruction address bit 1 during load mode"
+  ui[2]: "Instruction address bit 2 during load mode"
+  ui[3]: "Unused"
+  ui[4]: "Unused"
+  ui[5]: "Unused"
   ui[6]: "Byte select: 0=low byte, 1=high byte"
   ui[7]: "Mode select: 0=load, 1=run"
 
@@ -39,15 +39,15 @@ pinout:
   uo[6]: "ALU_out[6] - Result bit 6"
   uo[7]: "ALU_out[7] - Result bit 7"
 
-  # Bidirectional pins (PC lower 4 bits in run mode)
-  uio[0]: "PC[0] - Program Counter bit 0"
-  uio[1]: "PC[1] - Program Counter bit 1"
-  uio[2]: "PC[2] - Program Counter bit 2"
-  uio[3]: "PC[3] - Program Counter bit 3"
-  uio[4]: "Unused output"
-  uio[5]: "Unused output"
-  uio[6]: "Byte select input during load mode"
-  uio[7]: "Mode select input"
+  # Bidirectional pins (instruction byte input in load mode, ALU[15:8] output in run mode)
+  uio[0]: "Load input byte bit 0 / ALU_out[8] in run mode"
+  uio[1]: "Load input byte bit 1 / ALU_out[9] in run mode"
+  uio[2]: "Load input byte bit 2 / ALU_out[10] in run mode"
+  uio[3]: "Load input byte bit 3 / ALU_out[11] in run mode"
+  uio[4]: "Load input byte bit 4 / ALU_out[12] in run mode"
+  uio[5]: "Load input byte bit 5 / ALU_out[13] in run mode"
+  uio[6]: "Load input byte bit 6 / ALU_out[14] in run mode"
+  uio[7]: "Load input byte bit 7 / ALU_out[15] in run mode"
 
 # Do not change this version number!
 yaml_version: 6
