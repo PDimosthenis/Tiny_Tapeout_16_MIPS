@@ -14,12 +14,11 @@ module tt_um_top_module_16_mips (
 
     // Tiny Tapeout reset is active-low at the top-level pin.
     wire rst = !rst_n;
-    // uio_in[7] selects between instruction loading and CPU execution.
-    wire mode = uio_in[7];           // Run = 1, Load = 0
-    // During load mode, uio_in[6] selects which byte of a 16-bit word is written.
-    wire byte_sel = uio_in[6];       // 0 = low byte, 1 = high byte
-    wire [7:0] alu_out;
-    wire [3:0] pc_out;
+    // ui_in[7] selects between instruction loading and CPU execution.
+    wire mode = ui_in[7];           // Run = 1, Load = 0
+    // During load mode, ui_in[6] selects which byte of a 16-bit word is written.
+    wire byte_sel = ui_in[6];       // 0 = low byte, 1 = high byte
+    wire [15:0] alu_out;
     wire write_ena;
 
     // Writes to instruction memory are only allowed in load mode.
@@ -30,34 +29,33 @@ module tt_um_top_module_16_mips (
         .rst(rst),
         .run_en(mode),
         .write_enable(write_ena),
-        .write_addr(uio_in[3:0]),
-        .write_data_byte(ui_in),
+        .write_addr(ui_in[2:0]), //instruction memory address will be given by ui_in[2:0] during load mode
+        .write_data_byte(uio_in),
         .write_byte_sel(byte_sel),
-        .ALU_out(alu_out),
-        .pc_out(pc_out)
+        .ALU_out(alu_out)
     );
 
     // In run mode show ALU result; in load mode echo ui_in for quick bring-up visibility.
-    assign uo_out = mode ? alu_out : ui_in;
-    assign uio_oe = mode ? 8'b0000_1111 : 8'b0000_0000;
+    assign uo_out = mode ? alu_out[7:0] : uio_in; // Debug visibility: echo load data on output pins.
+    assign uio_oe = mode ? 8'b1111_1111 : 8'b0000_0000; //1 to use them as output on Run , 0 to use them as input on Load
     // In run mode expose PC[3:0] on bidir pins, otherwise leave output value benign.
-    assign uio_out = mode ? {4'b0000, pc_out} : 8'b0000_0000;
+    assign uio_out = alu_out[15:8];
 
 endmodule
 
-// --- PC Module ---
+//  PC Module
 module PC(
     input wire clk, rst, en, jump,
-    input wire [3:0] jump_address,
-    output reg [3:0] pc_out
+    input wire [2:0] jump_address,
+    output reg [2:0] pc_out
 );
     always @(posedge clk) begin
-        if (rst) pc_out <= 4'd0;
+        if (rst) pc_out <= 3'd0;
         else if (en) pc_out <= jump ? jump_address : (pc_out + 1);
     end
 endmodule
 
-// --- Instruction Memory ---
+//  Instruction Memory 
 module instruction_memory(
     input wire clk, write_enable,
     input wire [2:0] p_in, write_addr,
@@ -80,22 +78,22 @@ module instruction_memory(
     assign instruction = ram[p_in];
 endmodule
 
-// --- Decoder ---
+//  Decoder 
 module decoder (
     input wire [15:0] instruction_in,
-    output reg [3:0] rs, rt, rd,
-    output reg [3:0] im,
-    output reg [3:0] jump_addr
+    output reg [1:0] rs, rt, rd,
+    output reg [7:0] im,
+    output reg [2:0] jump_addr
 );
 
     wire [3:0] opcode = instruction_in[15:12];
 
     always @(*) begin
-        rs = 4'b0000;
-        rt = 4'b0000;
-        rd = 4'b0000;
-        im = 4'b0000;
-        jump_addr = 4'b0000;
+        rs = 2'b00;
+        rt = 2'b00;
+        rd = 2'b00;
+        im = 8'b0000_0000;
+        jump_addr = 3'b000;
 
         case (opcode)
             4'b0000, // add
@@ -103,22 +101,22 @@ module decoder (
             4'b0010, // xor 
             4'b0011: //or
              begin // R-type: add, sub, xor, or
-                rs = instruction_in[11:8];
-                rt = instruction_in[7:4];
-                rd = instruction_in[3:0];
+                rs = instruction_in[11:10];
+                rt = instruction_in[9:8];
+                rd = instruction_in[7:6];
             end
 
             4'b0100, //lw
             4'b0101, //sw
             4'b0110: //addi
              begin // lw, sw, addi
-                rs = instruction_in[11:8]; //
-                rt = instruction_in[7:4];  //
-                im = instruction_in[3:0];  //
+                rs = instruction_in[11:10]; //
+                rt = instruction_in[9:8];  //
+                im = instruction_in[7:0];  //
             end
 
             4'b0111: begin // jump
-                jump_addr = instruction_in[3:0];
+                jump_addr = instruction_in[2:0];
             end
 
             default: begin
@@ -151,7 +149,7 @@ always @(*) begin
    end
 endmodule
 
-// --- Control Unit ---
+//  Control Unit 
 module control_unit (
     input wire [3:0] opcode,
     output reg MemRead,
@@ -211,103 +209,131 @@ module data_mem(
 
 endmodule
 
-module mips_single_cycle(
-    input wire clk, rst, run_en, write_enable,
-    input wire [3:0] write_addr,
-    input wire [7:0] write_data_byte,
-    input wire write_byte_sel,
-    output wire [7:0] ALU_out,
-    output wire [3:0] pc_out
+module regfile (
+    input wire clk,                  
+    input wire [1:0] readReg1, 
+    input wire [1:0] readReg2, 
+    input wire [1:0] writeReg,
+    input wire [15:0] writeData,
+    input wire RegWrite,
+    output wire [15:0] readData1,    
+    output wire [15:0] readData2
 );
-    wire [15:0] instr;
-    wire [3:0] rs, rt, rd, im_val, jump_addr;
-    wire MemRead, MemWrite, RegWrite, ALUsrc, RegDst, MemtoReg, jump;
-    wire [2:0] alu_op;
-    wire [15:0] rdata1, rdata2, alu_b, alu_result, sign_ext_imm, mem_data, wb_data;
-    wire [1:0] rs_idx, rt_idx, wb_addr;
-    integer i;
 
-    // 4 x 16-bit register file. We use low 2 bits of decoded register fields.
-    reg [15:0] reg_file [0:3];
+    reg [15:0] registers [3:0];
 
-    PC pc_u (
-        .clk(clk),
-        .rst(rst),
-        .en(run_en),
-        .jump(jump),
-        .jump_address(jump_addr),
-        .pc_out(pc_out)
-    );
+    
+    assign readData1 = (readReg1 == 2'b00) ? 16'h0000 : registers[readReg1];
+    assign readData2 = (readReg2 == 2'b00) ? 16'h0000 : registers[readReg2];
 
-    instruction_memory imem_u (
-        .clk(clk),
-        .write_enable(write_enable),
-        .p_in(pc_out[2:0]),
-        .write_addr(write_addr[2:0]),
-        .byte_select(write_byte_sel),
-        .write_data_byte(write_data_byte),
-        .instruction(instr)
-    );
-
-    decoder dec_u (
-        .instruction_in(instr),
-        .rs(rs),
-        .rt(rt),
-        .rd(rd),
-        .im(im_val),
-        .jump_addr(jump_addr)
-    );
-
-    control_unit cu_u (
-        .opcode(instr[15:12]),
-        .MemRead(MemRead),
-        .MemWrite(MemWrite),
-        .RegWrite(RegWrite),
-        .ALUsrc(ALUsrc),
-        .RegDst(RegDst),
-        .MemtoReg(MemtoReg),
-        .Jump(jump),
-        .alu_op(alu_op)
-    );
-
-    assign rs_idx = rs[1:0];
-    assign rt_idx = rt[1:0];
-    assign rdata1 = reg_file[rs_idx];
-    assign rdata2 = reg_file[rt_idx];
-    // Sign-extend 4-bit immediate to full ALU width.
-    assign sign_ext_imm = {{12{im_val[3]}}, im_val};
-    assign alu_b = ALUsrc ? sign_ext_imm : rdata2;
-    assign wb_addr = RegDst ? rd[1:0] : rt[1:0];
-
-    alu alu_u (
-        .A(rdata1),
-        .B(alu_b),
-        .alu_op(alu_op),
-        .alu_out(alu_result)
-    );
-
-    data_mem dmem_u (
-        .clk(clk),
-        .MemWrite(MemWrite & run_en),
-        .MemRead(MemRead),
-        .addr(alu_result[1:0]),
-        .writeData(rdata2),
-        .readData(mem_data)
-    );
-
-    // Final write-back mux selects ALU result or memory data.
-    assign wb_data = MemtoReg ? mem_data : alu_result;
-    assign ALU_out = alu_result[7:0];
-
+    
     always @(posedge clk) begin
-        if (rst) begin
-            // Deterministic non-zero init helps debug early instruction execution.
-            for (i = 0; i < 4; i = i + 1)
-                reg_file[i] <= i[15:0];
-        end else if (RegWrite && run_en) begin
-            reg_file[wb_addr] <= wb_data;
+        if (RegWrite && writeReg != 2'b00) begin
+            registers[writeReg] <= writeData;
         end
     end
+
 endmodule
 
-`default_nettype wire
+module mips_single_cycle (
+    input  wire        clk, rst, run_en, write_enable,
+    input  wire [2:0] write_addr,
+    input  wire [7:0] write_data_byte,
+    input  wire write_byte_sel,    
+    output wire [15:0] ALU_out   
+);
+
+   //Internal nets
+   wire [2:0] pc_out;
+   wire        jump;
+   wire [15:0] instruction;
+   wire [1:0]  rs, rt, rd;
+   wire [7:0] im;
+   wire [2:0] jump_addr;
+   wire        MemRead, MemWrite, RegWrite, ALUsrc, RegDst, MemtoReg;
+   wire [2:0]  ALUOp;
+   wire [1:0]  writeReg;
+   wire [15:0] writeData_reg;
+   wire [15:0] readData1, readData2;
+   wire [15:0] MemData;
+   wire [15:0] ALU_input1, ALU_input2;
+   wire [15:0] imm_sgn_ext;
+
+   
+   
+   assign writeReg          = (RegDst) ? rd : rt; //Choose to which register to write
+   assign writeData_reg     = (MemtoReg) ? MemData : ALU_out; //Choose what data to write on the regfile. Mem or ALU result
+   assign ALU_input1        = readData1;
+   assign imm_sgn_ext       = {{8{im[7]}}, im};               // Sign-extend the immediate value
+   assign ALU_input2        = (ALUsrc) ? imm_sgn_ext : readData2;  //Choose the second ALU operand between reg2 or immediate value
+
+   PC pc (
+       .clk(clk), 
+       .rst(rst), 
+       .en(run_en),
+       .jump(jump), 
+       .jump_address(jump_addr), 
+       .pc_out(pc_out)
+   );   
+
+   instruction_memory inst_mem (
+       .clk(clk),
+       .write_enable(write_enable),
+       .p_in(pc_out), 
+       .write_addr(write_addr),
+       .byte_select(write_byte_sel),
+       .write_data_byte(write_data_byte),  
+       .instruction(instruction)
+   );
+
+   decoder dec (
+       .instruction_in(instruction), //Get the full 16bit instruction
+       .rs(rs),                      
+       .rt(rt), 
+       .rd(rd), 
+       .im(im), 
+       .jump_addr(jump_addr)
+   );
+
+   control_unit cu (
+       .opcode(instruction[15:12]), 
+       .MemRead(MemRead), 
+       .MemWrite(MemWrite), 
+       .RegWrite(RegWrite), 
+       .ALUsrc(ALUsrc), 
+       .RegDst(RegDst), 
+       .MemtoReg(MemtoReg), 
+       .Jump(jump), 
+       .alu_op(ALUOp)
+   );
+
+   regfile rf (
+       .clk(clk), 
+       .readReg1(rs), 
+       .readReg2(rt),  
+       .RegWrite(RegWrite & run_en), 
+       .writeData(writeData_reg), 
+       .readData1(readData1), 
+       .readData2(readData2), 
+       .writeReg(writeReg) 
+   );
+
+   alu alu_unit (
+       .A(ALU_input1), 
+       .B(ALU_input2), 
+       .alu_op(ALUOp), 
+       .alu_out(ALU_out)
+   );
+
+   data_mem data_memory (
+       .clk(clk), 
+       .MemWrite(MemWrite & run_en), 
+       .MemRead(MemRead), 
+       .addr(ALU_out[1:0]), 
+       .writeData(readData2), 
+       .readData(MemData)
+   );
+
+endmodule
+
+
