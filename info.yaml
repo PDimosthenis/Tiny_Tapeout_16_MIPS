@@ -1,8 +1,8 @@
 # Tiny Tapeout project information
 project:
   title:       "16-bit MIPS Single Cycle Processor"
-  author:      "Kishore Netheti"                      # Your name
-  discord:     "kishore_netheti"                      # Your Discord handle (optional)
+  author:      "Dimosthenis Papathanasiou , Andreas Skoufakis"                      # Your name
+  #discord:     ""                      # Your Discord handle (optional)
   description: "A complete 16-bit MIPS single-cycle processor that loads 16-bit instructions through the existing 8-bit Tiny Tapeout input pins" 
   language:    "Verilog"                              # Language used
   clock_hz:    10000000                               # Clock frequency in Hz (10 MHz)
@@ -11,7 +11,7 @@ project:
   tiles: "1x1"                                       # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 8x2
 
   # Top module (must start with "tt_um_")
-  top_module: "tt_um_kishorenetheti_tt8_mips"
+  top_module: "top_module_16_mips"
 
   # Source files in ./src directory
   source_files:

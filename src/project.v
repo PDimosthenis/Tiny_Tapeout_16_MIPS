@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module tt_um_kishorenetheti_tt8_mips (
+module top_module_16_mips (
     input  wire [7:0] ui_in,  //input    
     output wire [7:0] uo_out, //output   
     input  wire [7:0] uio_in, //bi-in  
