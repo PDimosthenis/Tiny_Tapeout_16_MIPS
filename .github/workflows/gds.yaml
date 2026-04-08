@@ -58,25 +58,3 @@ jobs:
         uses: TinyTapeout/tt-gds-action/viewer@ttsky25a
         with:
           pdk: sky130
-
-      - name: List files to debug
-        run: |
-          echo "Current directory contents:"
-          ls -la
-          echo "Looking for viewer-related directories:"
-          find . -name "*viewer*" -o -name "*html*" -o -name "*site*" 2>/dev/null || true
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-          name: my-unique-viewer-artifact   # 👈 ensure unique artifact name
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: my-unique-viewer-artifact   # 👈 deploy from unique artifact
