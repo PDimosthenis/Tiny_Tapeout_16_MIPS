@@ -3,21 +3,24 @@ VERILOG_SOURCES ?= ../src/project.v
 TOPLEVEL ?= tt_um_top_module_16_mips
 MODULE ?= test
 
+# Prefer a local virtualenv when available, but work with system Python in CI.
 VENV_BIN := $(abspath ../.venv/bin)
-VENV_PYTHON := $(VENV_BIN)/python
-COCOTB_SITE := $(shell $(VENV_PYTHON) -c "import cocotb, os; print(os.path.dirname(cocotb.__file__))")
-PYTHON_SITE_PACKAGES := $(shell $(VENV_PYTHON) -c "import site; print(':'.join(site.getsitepackages()))")
-LIBPYTHON_LOC := $(shell $(VENV_PYTHON) -c "import sysconfig, pathlib; print(pathlib.Path(sysconfig.get_config_var('LIBDIR'), sysconfig.get_config_var('LDLIBRARY')))" )
+PYTHON ?= $(shell if [ -x "$(VENV_BIN)/python" ]; then echo "$(VENV_BIN)/python"; elif command -v python3 >/dev/null 2>&1; then command -v python3; else command -v python; fi)
+COCOTB_SITE := $(shell $(PYTHON) -c "import cocotb, os; print(os.path.dirname(cocotb.__file__))")
+PYTHON_SITE_PACKAGES := $(shell $(PYTHON) -c "import site; print(':'.join(site.getsitepackages()))")
+LIBPYTHON_LOC := $(shell $(PYTHON) -c "import sysconfig, pathlib; print(pathlib.Path(sysconfig.get_config_var('LIBDIR'), sysconfig.get_config_var('LDLIBRARY')))" )
 COCOTB_LIBS := $(COCOTB_SITE)/libs
 
 SIM_BUILD ?= sim_build
-IVERILOG ?= /usr/bin/iverilog
-VVP ?= /usr/bin/vvp
+IVERILOG ?= $(shell command -v iverilog)
+VVP ?= $(shell command -v vvp)
 COCOTB_RESULTS_FILE ?= results.xml
 
+ifneq ($(wildcard $(VENV_BIN)),)
 export PATH := $(VENV_BIN):$(PATH)
-export PYTHONPATH := $(PYTHON_SITE_PACKAGES):$(PYTHONPATH)
 export VIRTUAL_ENV := $(abspath ../.venv)
+endif
+export PYTHONPATH := $(PYTHON_SITE_PACKAGES):$(PYTHONPATH)
 export LIBPYTHON_LOC := $(LIBPYTHON_LOC)
 
 .PHONY: all sim clean

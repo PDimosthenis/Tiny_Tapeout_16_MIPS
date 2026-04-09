@@ -7,6 +7,34 @@ def as_u16_from_outputs(dut) -> int:
     return (int(dut.uio_out.value) << 8) | int(dut.uo_out.value)
 
 
+def decode_instr(instr: int) -> str:
+    opcode = (instr >> 12) & 0xF
+    rs = (instr >> 10) & 0x3
+    rt = (instr >> 8) & 0x3
+    rd = (instr >> 6) & 0x3
+    imm = instr & 0xFF
+    target = instr & 0x7
+
+    if opcode == 0x0:
+        return f"add r{rd}, r{rs}, r{rt}"
+    if opcode == 0x1:
+        return f"sub r{rd}, r{rs}, r{rt}"
+    if opcode == 0x2:
+        return f"xor r{rd}, r{rs}, r{rt}"
+    if opcode == 0x3:
+        return f"or r{rd}, r{rs}, r{rt}"
+    if opcode == 0x4:
+        return f"lw r{rt}, [r{rs} + 0x{imm:02X}]"
+    if opcode == 0x5:
+        return f"sw r{rt}, [r{rs} + 0x{imm:02X}]"
+    if opcode == 0x6:
+        return f"addi r{rt}, r{rs}, 0x{imm:02X}"
+    if opcode == 0x7:
+        return f"jump {target}"
+
+    return "unknown"
+
+
 async def load_instr(dut, addr: int, instr: int) -> None:
     # Verilog: @(negedge clk);
     # Drive controls/data before the write edge to avoid race conditions.
@@ -63,7 +91,7 @@ async def test_behavior_matches_verilog_tb(dut):
     for addr, instr in enumerate(program):
         # Verilog: load_instr(addr, instr);
         await load_instr(dut, addr, instr)
-        instruction_report.append(f"  [{addr}] 0x{instr:04X}")
+        instruction_report.append(f"  [{addr}] 0x{instr:04X}  {decode_instr(instr)}")
 
     # Verilog: #1;
     await Timer(1, units="ns")

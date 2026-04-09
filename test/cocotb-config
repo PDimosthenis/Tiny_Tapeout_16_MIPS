@@ -1,2 +1,6 @@
 #!/usr/bin/env sh
-exec "$(dirname "$0")/../.venv/bin/cocotb-config" "$@"
+if [ -x "$(dirname "$0")/../.venv/bin/cocotb-config" ]; then
+	exec "$(dirname "$0")/../.venv/bin/cocotb-config" "$@"
+fi
+
+exec cocotb-config "$@"
