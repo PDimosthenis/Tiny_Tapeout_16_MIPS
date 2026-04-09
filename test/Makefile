@@ -7,7 +7,7 @@ VENV_BIN := $(abspath ../.venv/bin)
 VENV_PYTHON := $(VENV_BIN)/python
 COCOTB_SITE := $(shell $(VENV_PYTHON) -c "import cocotb, os; print(os.path.dirname(cocotb.__file__))")
 PYTHON_SITE_PACKAGES := $(shell $(VENV_PYTHON) -c "import site; print(':'.join(site.getsitepackages()))")
-LIBPYTHON_LOC := /usr/lib/x86_64-linux-gnu/libpython3.12.so.1.0
+LIBPYTHON_LOC := $(shell $(VENV_PYTHON) -c "import sysconfig, pathlib; print(pathlib.Path(sysconfig.get_config_var('LIBDIR'), sysconfig.get_config_var('LDLIBRARY')))" )
 COCOTB_LIBS := $(COCOTB_SITE)/libs
 
 SIM_BUILD ?= sim_build
@@ -17,6 +17,7 @@ COCOTB_RESULTS_FILE ?= results.xml
 
 export PATH := $(VENV_BIN):$(PATH)
 export PYTHONPATH := $(PYTHON_SITE_PACKAGES):$(PYTHONPATH)
+export VIRTUAL_ENV := $(abspath ../.venv)
 export LIBPYTHON_LOC := $(LIBPYTHON_LOC)
 
 .PHONY: all sim clean
