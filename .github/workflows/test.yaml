@@ -37,17 +37,19 @@ jobs:
           cd test
           make clean
           make
-          # make will return success even if the test fails, so check for failure in the results.xml
-          ! grep failure results.xml
+          test -f results.xml
+          # make can still exit successfully even if the test body reports a failure,
+          # so fail the job when the JUnit report contains a failure entry.
+          ! grep -q failure results.xml
 
       - name: Test Summary
         uses: test-summary/action@v2.3
         with:
           paths: "test/results.xml"
-        if: always()
+        if: always() && hashFiles('test/results.xml') != ''
 
       - name: upload vcd
-        if: success() || failure()
+        if: (success() || failure()) && hashFiles('test/results.xml') != ''
         uses: actions/upload-artifact@v4
         with:
           name: test-vcd
