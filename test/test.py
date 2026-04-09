@@ -47,14 +47,14 @@ async def test_behavior_matches_verilog_tb(dut):
     dut.ena.value = 1
 
     program = [
-        0x6101,  # addi r1, r0, 1
-        0x6202,  # addi r2, r0, 2
-        0x6303,  # addi r3, r0, 3
-        0x6501,  # addi r1, r1, 1
-        0x6A01,  # addi r2, r2, 1
-        0x6F01,  # addi r3, r3, 1
-        0x7006,  # jump 6
-        0x6109,  # addi r1, r0, 9 (should never execute)
+        0x604A,  # addi r1, r0, 10
+        0x60CE,  # addi r3, r0, 14
+        0x50C0,  # sw   r3, r0, 0
+        0x5041,  # sw   r1, r0, 1
+        0x4040,  # lw   r1, r0, 0
+        0x32D8,  # or   r3, r1, r3
+        0x7000,  # j    0
+        0x7000,  # j    0 (fill)
     ]
 
     for addr, instr in enumerate(program):
@@ -81,14 +81,14 @@ async def test_behavior_matches_verilog_tb(dut):
     assert int(dut.uio_oe.value) == 0xFF, "uio_oe must be 0xFF in run mode"
 
     expected_steps = [
-        (0, 0x0001),
-        (1, 0x0002),
-        (2, 0x0003),
-        (3, 0x0002),
-        (4, 0x0003),
-        (5, 0x0004),
+        (0, 0x000A),
+        (1, 0x000E),
+        (2, 0x0000),
+        (3, 0x0001),
+        (4, 0x0000),
+        (5, 0x000E),
         (6, 0x0000),
-        (6, 0x0000),
+        (0, 0x000A),
     ]
 
     for exp_pc, exp_alu in expected_steps:
@@ -107,6 +107,6 @@ async def test_behavior_matches_verilog_tb(dut):
     r2 = int(dut.cpu.rf.registers[2].value)
     r3 = int(dut.cpu.rf.registers[3].value)
 
-    assert r1 == 0x0002, f"r1 mismatch: got 0x{r1:04X}, exp 0x0002"
-    assert r2 == 0x0003, f"r2 mismatch: got 0x{r2:04X}, exp 0x0003"
-    assert r3 == 0x0004, f"r3 mismatch: got 0x{r3:04X}, exp 0x0004"
+    assert r1 == 0x000A, f"r1 mismatch: got 0x{r1:04X}, exp 0x000A"
+    assert r2 == 0x0000, f"r2 mismatch: got 0x{r2:04X}, exp 0x0000"
+    assert r3 == 0x000E, f"r3 mismatch: got 0x{r3:04X}, exp 0x000E"
