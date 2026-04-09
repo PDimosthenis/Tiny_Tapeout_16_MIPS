@@ -1,8 +1,10 @@
 name: docs
 
 on:
-  # Temporarily disabled to prevent conflicts
-  # push:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
