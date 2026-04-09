@@ -117,6 +117,11 @@ If you only want to run the testbench, use `make` from the `test/` directory. Gi
 - Top module: `tt_um_top_module_16_mips`
 - Language: Verilog
 
+## Configuration Update
+
+- Updated `src/config.json`: `PL_TARGET_DENSITY_PCT` was increased from `60` to `80`.
+- This aligns with Tiny Tapeout guidance for cases where global placement can fail at lower density targets.
+
 ## Author
 
 Dimosthenis Papathanasiou, Andreas Skoufakis , Christoforos Marinopoulos

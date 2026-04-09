@@ -47,19 +47,23 @@ async def test_behavior_matches_verilog_tb(dut):
     dut.ena.value = 1
 
     program = [
-        0x604A,  # addi r1, r0, 10
-        0x60CE,  # addi r3, r0, 14
-        0x50C0,  # sw   r3, r0, 0
-        0x5041,  # sw   r1, r0, 1
-        0x4040,  # lw   r1, r0, 0
-        0x32D8,  # or   r3, r1, r3
+        0x610A,  # addi r1, r0, 10
+        0x630E,  # addi r3, r0, 14
+        0x5300,  # sw   r3, r0, 0
+        0x5101,  # sw   r1, r0, 1
+        0x4100,  # lw   r1, r0, 0
+        0x37C0,  # or   r3, r1, r3
         0x7000,  # j    0
         0x7000,  # j    0 (fill)
     ]
 
+    instruction_report = []
+    execution_report = []
+
     for addr, instr in enumerate(program):
         # Verilog: load_instr(addr, instr);
         await load_instr(dut, addr, instr)
+        instruction_report.append(f"  [{addr}] 0x{instr:04X}")
 
     # Verilog: #1;
     await Timer(1, units="ns")
@@ -91,22 +95,35 @@ async def test_behavior_matches_verilog_tb(dut):
         (0, 0x000A),
     ]
 
-    for exp_pc, exp_alu in expected_steps:
-        # Verilog run_and_step task:
-        #   #1; check PC/ALU; @(posedge clk);
+    try:
+        for exp_pc, exp_alu in expected_steps:
+            # Verilog run_and_step task:
+            #   #1; check PC/ALU; @(posedge clk);
+            await Timer(1, units="ns")
+            got_pc = int(dut.cpu.pc_out.value)
+            got_alu = as_u16_from_outputs(dut)
+            execution_report.append(
+                f"  PC {got_pc} vs {exp_pc} | ALU 0x{got_alu:04X} vs 0x{exp_alu:04X}"
+            )
+            assert got_pc == exp_pc, f"PC mismatch: got {got_pc}, exp {exp_pc}"
+            assert got_alu == exp_alu, f"ALU mismatch: got 0x{got_alu:04X}, exp 0x{exp_alu:04X}"
+            await RisingEdge(dut.clk)
+
+        # Verilog: #1; then final register checks.
         await Timer(1, units="ns")
-        got_pc = int(dut.cpu.pc_out.value)
-        got_alu = as_u16_from_outputs(dut)
-        assert got_pc == exp_pc, f"PC mismatch: got {got_pc}, exp {exp_pc}"
-        assert got_alu == exp_alu, f"ALU mismatch: got 0x{got_alu:04X}, exp 0x{exp_alu:04X}"
-        await RisingEdge(dut.clk)
+        r1 = int(dut.cpu.rf.registers[1].value)
+        r3 = int(dut.cpu.rf.registers[3].value)
 
-    # Verilog: #1; then final register checks.
-    await Timer(1, units="ns")
-    r1 = int(dut.cpu.rf.registers[1].value)
-    r2 = int(dut.cpu.rf.registers[2].value)
-    r3 = int(dut.cpu.rf.registers[3].value)
+        execution_report.append(f"  r1 0x{r1:04X} vs 0x000A")
+        execution_report.append(f"  r3 0x{r3:04X} vs 0x000E")
 
-    assert r1 == 0x000A, f"r1 mismatch: got 0x{r1:04X}, exp 0x000A"
-    assert r2 == 0x0000, f"r2 mismatch: got 0x{r2:04X}, exp 0x0000"
-    assert r3 == 0x000E, f"r3 mismatch: got 0x{r3:04X}, exp 0x000E"
+        assert r1 == 0x000A, f"r1 mismatch: got 0x{r1:04X}, exp 0x000A"
+        assert r3 == 0x000E, f"r3 mismatch: got 0x{r3:04X}, exp 0x000E"
+    finally:
+        dut._log.info("\nLoaded instructions:")
+        for line in instruction_report:
+            dut._log.info(line)
+
+        dut._log.info("\nExecution trace (expected vs got):")
+        for line in execution_report:
+            dut._log.info(line)

@@ -90,3 +90,8 @@ make
 - The data memory in the current RTL is 2 words deep.
 - The program counter is 3 bits wide, so execution wraps across 8 instruction addresses.
 - `uio_out` is not a program-counter output; it carries the upper byte of the ALU result in run mode.
+
+## Configuration Update
+
+- Updated `src/config.json`: `PL_TARGET_DENSITY_PCT` was increased from `60` to `80`.
+- This change is intended to help placement convergence when lower density targets cause global placement failures.
