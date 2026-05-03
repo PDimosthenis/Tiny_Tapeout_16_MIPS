@@ -12,6 +12,7 @@ module tt_um_top_module_16_mips (
     input  wire       rst_n
 );
 
+    wire _unused_ok = &{1'b0, ui_in[5:3], 1'b0}; //To not let the unused input pins floating
     // Tiny Tapeout reset is active-low at the top-level pin.
     wire rst = !rst_n;
     // ui_in[7] selects between instruction loading and CPU execution.
