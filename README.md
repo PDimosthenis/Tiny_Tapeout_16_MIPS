@@ -6,7 +6,7 @@ This project implements a small 16-bit MIPS-like single-cycle CPU for Tiny Tapeo
 
 ## How It Works
 
-The top module, [tt_um_top_module_16_mips](src/project.v), uses `ui_in[7]` as the mode select bit. When `ui_in[7] = 0`, the design is in load mode and instruction bytes are written into instruction memory one halfword at a time. `ui_in[6]` selects the low byte or high byte, `ui_in[2:0]` selects the instruction address, and `uio_in[7:0]` carries the instruction byte.
+The top module, [tt_um_top_module_16_mips](src/project.v), uses `ui_in[7]` as the mode select bit. When `ui_in[7] = 0`, the design is in load mode and instruction bytes are written into instruction memory one halfword at a time. `ui_in[6]` selects the low byte or high byte, `ui_in[2:0]` selects the instruction address, and `uio_in[7:0]` carries the instruction byte. The unused input pins (ui_in[5:3]) are intentionally driven to zero using a reduction AND operation. This ensures they are not left floating and prevents related synthesis warnings.
 
 When `ui_in[7] = 1`, the design enters run mode. The program counter advances on each clock edge, the decoder extracts the register fields and immediate values, the control unit generates the datapath control signals, and the ALU executes arithmetic, logic, and address calculations. In run mode, `uo_out[7:0]` shows the low byte of the ALU result and `uio_out[7:0]` shows the high byte, so the full result is `{uio_out, uo_out}`.
 
